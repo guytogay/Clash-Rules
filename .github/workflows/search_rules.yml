@@ -10,28 +10,33 @@ jobs:
   find:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Your Repo
         uses: actions/checkout@v4
 
-      - name: Deep Search Official Rules
+      - name: Clone Official Source Code
         run: |
-          # 1. 下载官方二进制数据
-          curl -sL https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite.dat -o geosite.dat
+          # 深度克隆官方的域名规则源代码（只拉取数据部分，速度很快）
+          git clone --depth 1 https://github.com/MetaCubeX/meta-rules-dat.git official_data
+
+      - name: Search Domain in Source
+        run: |
+          echo "开始全库深度匹配..."
           
-          # 2. 【核心】将二进制转换为纯文本，方便搜索
-          # 我们利用 strings 命令把里面的文本全抓出来
-          strings geosite.dat > decoded.txt
-          
-          echo "开始全库扫描..."
-          
-          # 3. 读取 search.txt 并搜索
           while read -r domain; do
             [[ -z "$domain" || "$domain" =~ ^# ]] && continue
             echo "------------------------------------"
             echo "🔍 正在搜索域名: $domain ..."
             
-            # 在解码后的文本里找域名，并向上找最近的分类名
-            # 官方格式通常是 分类名 在前，域名在后
-            grep -B 100 "$domain" decoded.txt | grep ":" | tail -n 1 || echo "❌ 未在官方库中找到该域名"
+            # 在官方 data 目录下递归搜索包含该域名的文件
+            # -r 递归, -l 只显示文件名, -w 全字匹配
+            result=$(grep -rl "$domain" official_data/data/ || true)
+            
+            if [ -z "$result" ]; then
+              echo "❌ 未在官方库中找到该域名"
+            else
+              echo "✅ 匹配到以下官方文件(Tag):"
+              # 格式化输出文件名
+              echo "$result" | sed 's|official_data/data/||g'
+            fi
           done < rules/search.txt
           echo "------------------------------------"
