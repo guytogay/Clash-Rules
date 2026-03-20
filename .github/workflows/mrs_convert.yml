@@ -6,6 +6,9 @@ on:
       - 'rules/ken_fix.list'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   convert:
     runs-on: ubuntu-latest
@@ -13,30 +16,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Install Mihomo Tool
-        run: |
-          go install github.com/MetaCubeX/mihomo@latest
-
-      - name: Convert to MRS
+      - name: Convert to MRS via API
         run: |
           # 1. 构造标准的 YAML 格式
           echo "payload:" > temp.yaml
           grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
           
-          # 2. 使用安装好的 mihomo 工具转换
-          ~/go/bin/mihomo convert ruleset temp.yaml rules/ken_fix.mrs
+          # 2. 调用官方转换 API（这是目前最稳的方法，不依赖本地环境）
+          curl -F "file=@temp.yaml" -F "output=mrs" https://converter.metacubex.one/convert -o rules/ken_fix.mrs
           
-          echo "Conversion completed."
+          echo "Conversion finished via API."
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add rules/ken_fix.mrs
-          git commit -m "chore: auto update mrs" || exit 0
+          git commit -m "chore: auto update mrs via api" || exit 0
           git push
