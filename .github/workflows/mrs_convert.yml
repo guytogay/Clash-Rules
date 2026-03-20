@@ -16,36 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Download Mihomo
+      - name: Prepare Ruleset
         run: |
-          wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
-          gunzip mihomo-linux-amd64-v1.18.1.gz
-          mv mihomo-linux-amd64-v1.18.1 mihomo
-          chmod +x mihomo
-
-      - name: Convert to MRS
-        run: |
-          # 1. 强制生成一个空的配置文件，骗过 mihomo 的启动自检
-          echo "mode: rule" > config.yaml
-          
-          # 2. 构造转换用的 payload
+          # 构造标准 YAML 格式
           echo "payload:" > temp.yaml
           grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
-          
-          # 3. 执行转换指令，确保不带任何多余参数
-          ./mihomo convert ruleset temp.yaml rules/ken_fix.mrs
-          
-          echo "Success: MRS file generated."
+
+      - name: Convert to MRS
+        uses: MetaCubeX/work-with-ruleset@main
+        with:
+          files: |
+            temp.yaml
+          # 转换后的后缀名
+          format: mrs
 
       - name: Commit and Push
         run: |
+          # 将转换生成的 temp.mrs 改名为 ken_fix.mrs 并移回 rules 文件夹
+          mv temp.mrs rules/ken_fix.mrs
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          if [ -f rules/ken_fix.mrs ]; then
-            git add rules/ken_fix.mrs
-            git commit -m "Auto-convert rules to MRS" || exit 0
-            git push
-          else
-            echo "Error: MRS file was not created"
-            exit 1
-          fi
+          git add rules/ken_fix.mrs
+          git commit -m "Auto-convert rules to MRS via Tool" || exit 0
+          git push
