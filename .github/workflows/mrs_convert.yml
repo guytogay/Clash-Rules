@@ -25,26 +25,24 @@ jobs:
 
       - name: Convert to MRS
         run: |
-          # 1. 构造 YAML 头部
+          # 1. 构造 YAML
           echo "payload:" > temp.yaml
           grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
           
-          # 2. 使用特殊的 convert 语法，直接输出到目标文件
-          # 这个命令在 1.18.1 版本中是专门为了转换设计的，不应该启动服务
-          ./mihomo convert ruleset temp.yaml rules/ken_fix.mrs
+          # 2. 这里的重点：使用连字符格式命令，并且绝不给它启动的机会
+          ./mihomo convert-ruleset classical temp.yaml rules/ken_fix.mrs
           
-          # 3. 检查文件是否生成成功
-          if [ -f rules/ken_fix.mrs ]; then
-            echo "MRS conversion successful!"
-          else
-            echo "MRS creation failed!"
-            exit 1
-          fi
+          echo "Conversion finished."
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add rules/ken_fix.mrs
-          git commit -m "Auto-convert to MRS" || exit 0
-          git push
+          if [ -f rules/ken_fix.mrs ]; then
+            git add rules/ken_fix.mrs
+            git commit -m "Auto-convert to MRS" || exit 0
+            git push
+          else
+            echo "Failed to create MRS"
+            exit 1
+          fi
