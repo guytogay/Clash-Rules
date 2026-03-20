@@ -16,26 +16,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Prepare Ruleset
+      - name: Download Mihomo
         run: |
-          # 构造标准 YAML 格式
-          echo "payload:" > temp.yaml
-          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
+          # 下载内核并重命名
+          wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
+          gunzip mihomo-linux-amd64-v1.18.1.gz
+          mv mihomo-linux-amd64-v1.18.1 mihomo
+          chmod +x mihomo
 
       - name: Convert to MRS
-        uses: MetaCubeX/work-with-ruleset@main
-        with:
-          files: |
-            temp.yaml
-          # 转换后的后缀名
-          format: mrs
+        run: |
+          # 1. 构造标准的 YAML payload
+          echo "payload:" > temp.yaml
+          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
+          
+          # 2. 关键：使用 convert 命令，并用 -d . 强制指定运行目录为当前目录
+          # 这样它就不会去系统目录找配置，也不会尝试启动服务
+          ./mihomo -d . convert ruleset temp.yaml rules/ken_fix.mrs
+          
+          echo "Conversion completed."
 
       - name: Commit and Push
         run: |
-          # 将转换生成的 temp.mrs 改名为 ken_fix.mrs 并移回 rules 文件夹
-          mv temp.mrs rules/ken_fix.mrs
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add rules/ken_fix.mrs
-          git commit -m "Auto-convert rules to MRS via Tool" || exit 0
-          git push
+          if [ -f rules/ken_fix.mrs ]; then
+            git add rules/ken_fix.mrs
+            git commit -m "Auto-convert rules to MRS" || exit 0
+            git push
+          else
+            echo "MRS file creation failed!"
+            exit 1
+          fi
