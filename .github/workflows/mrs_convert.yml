@@ -1,4 +1,4 @@
-name: Auto Convert Rules to MRS
+name: Auto Build Classical YAML
 
 on:
   push:
@@ -10,40 +10,30 @@ permissions:
   contents: write
 
 jobs:
-  convert:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Tool
+      - name: Build Classical YAML
         run: |
-          # 直接下载官方编译好的二进制，这是最稳的
-          wget -O mihomo.gz https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
-          gunzip mihomo.gz
-          chmod +x mihomo
-
-      - name: Convert to MRS
-        run: |
-          # 1. 构造标准的 YAML 格式
-          echo "payload:" > temp.yaml
-          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
+          # 1. 强制构造 payload 头部
+          echo "payload:" > rules/ken_fix.yaml
           
-          # 2. 【核心修正】：使用 convert-ruleset classical 模式
-          # 加一个不存在的 -d 路径，彻底断绝它启动代理的念头
-          ./mihomo convert-ruleset classical temp.yaml rules/ken_fix.mrs
+          # 2. 从 list 文件提取有效规则并添加 YAML 缩进
+          # 逻辑：排除注释(#)和空行(^$) -> 在每行前面加两个空格和连字符
+          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> rules/ken_fix.yaml
           
-          echo "Conversion Success!"
+          # 3. 在日志中打印结果，方便我们调试
+          echo "--- Generated YAML Contents ---"
+          cat rules/ken_fix.yaml
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          if [ -f rules/ken_fix.mrs ]; then
-            git add rules/ken_fix.mrs
-            git commit -m "chore: auto update mrs" || exit 0
-            git push
-          else
-            echo "Error: MRS file not found!"
-            exit 1
-          fi
+          git add rules/ken_fix.yaml
+          # 只有当文件真正变化时才提交，防止死循环
+          git commit -m "chore: auto update ken_fix.yaml" || exit 0
+          git push
