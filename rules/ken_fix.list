@@ -1,0 +1,35 @@
+# --- Pluto TV 核心补丁 ---
+DOMAIN,tags.tiqcdn.com
+DOMAIN,imasdk.googleapis.com
+DOMAIN,crashlyticsreports-pa.googleapis.com
+DOMAIN,firebaselogging-pa.googleapis.com
+DOMAIN,connectivitycheck.gstatic.com
+DOMAIN-SUFFIX,app-measurement.com
+DOMAIN-SUFFIX,fwmrm.net
+DOMAIN-SUFFIX,brightline.tv
+DOMAIN-SUFFIX,doubleverify.com
+DOMAIN-SUFFIX,amagi.tv
+DOMAIN-SUFFIX,tmsimg.com
+DOMAIN-SUFFIX,statsig.com
+DOMAIN-SUFFIX,scorecardresearch.com
+DOMAIN-SUFFIX,youboranqs01.com
+DOMAIN-SUFFIX,youborafds01.com
+DOMAIN-SUFFIX,npaw.com
+DOMAIN-SUFFIX,onetrust.io
+DOMAIN,assets.adobedtm.com
+DOMAIN-SUFFIX,braze.com
+DOMAIN-SUFFIX,dewrain.life
+DOMAIN-SUFFIX,dewrain.site
+DOMAIN-SUFFIX,adsafeprotected.com
+DOMAIN-SUFFIX,adjust.com
+DOMAIN-SUFFIX,bugsnag.com
+DOMAIN-SUFFIX,redfast.com
+IP-CIDR,3.128.0.0/9,no-resolve
+
+# --- Tubi 核心补丁 ---
+DOMAIN-SUFFIX,adrise.tv
+DOMAIN-SUFFIX,haystack.tv
+DOMAIN-SUFFIX,tmdb.org
+
+# --- Plex 补丁 ---
+DOMAIN-SUFFIX,plexvideos.com
