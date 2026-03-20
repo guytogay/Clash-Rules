@@ -3,7 +3,7 @@ name: Auto Convert Rules to MRS
 on:
   push:
     paths:
-      - 'rules/**'
+      - 'rules/ken_fix.list'
   workflow_dispatch:
 
 jobs:
@@ -13,20 +13,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Convert ken_fix.list to MRS
-        uses: MetaCubeX/work-with-ruleset@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          # 只要你修改了 rules 文件夹里的 .list，它就自动干活
-          files: |
-            rules/ken_fix.list
-          format: mrs
+          go-version: 'stable'
+
+      - name: Install Mihomo Tool
+        run: |
+          go install github.com/MetaCubeX/mihomo@latest
+
+      - name: Convert to MRS
+        run: |
+          # 1. 构造标准的 YAML 格式
+          echo "payload:" > temp.yaml
+          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
+          
+          # 2. 使用安装好的 mihomo 工具转换
+          ~/go/bin/mihomo convert ruleset temp.yaml rules/ken_fix.mrs
+          
+          echo "Conversion completed."
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          # 官方工具转换后的文件默认在根目录，我们把它移回 rules
-          mv ken_fix.mrs rules/ken_fix.mrs
           git add rules/ken_fix.mrs
           git commit -m "chore: auto update mrs" || exit 0
           git push
