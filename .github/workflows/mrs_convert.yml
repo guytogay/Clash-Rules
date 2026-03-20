@@ -1,0 +1,36 @@
+name: Convert Rules to MRS
+
+on:
+  push:
+    paths:
+      - 'rules/**' # 只有当你修改 rules 文件夹里的文件时才触发
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download Mihomo
+        run: |
+          wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
+          gunzip mihomo-linux-amd64-v1.18.1.gz
+          chmod +x mihomo-linux-amd64-v1.18.1
+
+      - name: Convert to MRS
+        run: |
+          # 将你的 list 转换为 classical 格式的 yaml 方便编译
+          echo "payload:" > temp.yaml
+          sed 's/^/  - /' rules/ken_fix.list >> temp.yaml
+          # 使用 mihomo 工具编译成二进制 mrs
+          ./mihomo-linux-amd64-v1.18.1 convert ruleset temp.yaml rules/ken_fix.mrs
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add rules/ken_fix.mrs
+          git commit -m "Auto-convert to MRS" || exit 0
+          git push
