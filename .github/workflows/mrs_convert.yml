@@ -1,4 +1,4 @@
-name: Convert Rules to MRS
+name: Auto Convert Rules to MRS
 
 on:
   push:
@@ -6,43 +6,27 @@ on:
       - 'rules/**'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   convert:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Download Mihomo
-        run: |
-          wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
-          gunzip mihomo-linux-amd64-v1.18.1.gz
-          mv mihomo-linux-amd64-v1.18.1 mihomo
-          chmod +x mihomo
-
-      - name: Convert to MRS
-        run: |
-          # 1. 构造 YAML
-          echo "payload:" > temp.yaml
-          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
-          
-          # 2. 这里的重点：使用连字符格式命令，并且绝不给它启动的机会
-          ./mihomo convert-ruleset classical temp.yaml rules/ken_fix.mrs
-          
-          echo "Conversion finished."
+      - name: Convert ken_fix.list to MRS
+        uses: MetaCubeX/work-with-ruleset@main
+        with:
+          # 只要你修改了 rules 文件夹里的 .list，它就自动干活
+          files: |
+            rules/ken_fix.list
+          format: mrs
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          if [ -f rules/ken_fix.mrs ]; then
-            git add rules/ken_fix.mrs
-            git commit -m "Auto-convert to MRS" || exit 0
-            git push
-          else
-            echo "Failed to create MRS"
-            exit 1
-          fi
+          # 官方工具转换后的文件默认在根目录，我们把它移回 rules
+          mv ken_fix.mrs rules/ken_fix.mrs
+          git add rules/ken_fix.mrs
+          git commit -m "chore: auto update mrs" || exit 0
+          git push
