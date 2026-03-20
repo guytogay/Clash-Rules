@@ -13,13 +13,13 @@ jobs:
       - name: Checkout Your Repo
         uses: actions/checkout@v4
 
-      - name: Clone Official Source Code
+      - name: Search Domain in Official Text
         run: |
-          # 深度克隆官方的域名规则源代码（只拉取数据部分，速度很快）
-          git clone --depth 1 https://github.com/MetaCubeX/meta-rules-dat.git official_data
+          # 1. 下载官方最完整的 domain 文本列表 (这是个大文本，大约 20MB)
+          # 这个文件里包含了所有分类和对应的域名，是纯文本格式
+          curl -sL https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/all.yaml -o official_all.yaml || \
+          curl -sL https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite.dat -o official_all.yaml
 
-      - name: Search Domain in Source
-        run: |
           echo "开始全库深度匹配..."
           
           while read -r domain; do
@@ -27,16 +27,15 @@ jobs:
             echo "------------------------------------"
             echo "🔍 正在搜索域名: $domain ..."
             
-            # 在官方 data 目录下递归搜索包含该域名的文件
-            # -r 递归, -l 只显示文件名, -w 全字匹配
-            result=$(grep -rl "$domain" official_data/data/ || true)
+            # 使用 grep 搜索域名，并打印它上方的分类名 (通常分类名后面带着冒号)
+            # 我们直接把包含这个域名的文件的“段落头”抓出来
+            # 逻辑：搜到域名后，向上找最近的一个以字母开头并以冒号结尾的行
+            result=$(grep -B 100 "$domain" official_all.yaml | grep -E '^[a-zA-Z0-9-]+:' | tail -n 1 || true)
             
             if [ -z "$result" ]; then
               echo "❌ 未在官方库中找到该域名"
             else
-              echo "✅ 匹配到以下官方文件(Tag):"
-              # 格式化输出文件名
-              echo "$result" | sed 's|official_data/data/||g'
+              echo "✅ 匹配到官方 Tag: $result"
             fi
           done < rules/search.txt
           echo "------------------------------------"
