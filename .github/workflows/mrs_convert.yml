@@ -3,8 +3,12 @@ name: Convert Rules to MRS
 on:
   push:
     paths:
-      - 'rules/**' # 只有当你修改 rules 文件夹里的文件时才触发
+      - 'rules/**' # 只有当你修改 rules 文件夹里的内容时才触发
   workflow_dispatch: # 支持手动触发
+
+# 赋予 Action 写入仓库的权限
+permissions:
+  contents: write
 
 jobs:
   convert:
@@ -15,22 +19,28 @@ jobs:
 
       - name: Download Mihomo
         run: |
+          # 下载最新的 Mihomo 内核
           wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
           gunzip mihomo-linux-amd64-v1.18.1.gz
-          chmod +x mihomo-linux-amd64-v1.18.1
+          mv mihomo-linux-amd64-v1.18.1 mihomo
+          chmod +x mihomo
 
       - name: Convert to MRS
         run: |
-          # 将你的 list 转换为 classical 格式的 yaml 方便编译
+          # 1. 构造临时的 YAML 格式 payload
           echo "payload:" > temp.yaml
-          sed 's/^/  - /' rules/ken_fix.list >> temp.yaml
-          # 使用 mihomo 工具编译成二进制 mrs
-          ./mihomo-linux-amd64-v1.18.1 convert ruleset temp.yaml rules/ken_fix.mrs
+          # 2. 从 list 文件读取内容，排除掉注释和空行，并添加 YAML 缩进
+          grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
+          # 3. 执行转换命令
+          ./mihomo convert ruleset temp.yaml rules/ken_fix.mrs
+          # 4. 删除临时文件
+          rm temp.yaml
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add rules/ken_fix.mrs
-          git commit -m "Auto-convert to MRS" || exit 0
+          # 如果文件没有变化，就不提交以免报错
+          git commit -m "Auto-convert ken_fix.list to ken_fix.mrs" || exit 0
           git push
