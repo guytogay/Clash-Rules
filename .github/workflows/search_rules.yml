@@ -15,15 +15,23 @@ jobs:
 
       - name: Deep Search Official Rules
         run: |
-          # 1. 下载官方所有域名规则的汇总文本（这是最全的数据源）
+          # 1. 下载官方二进制数据
           curl -sL https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite.dat -o geosite.dat
           
-          # 2. 读取你想要搜的域名
-          for domain in $(grep -v '^#' rules/search.txt | grep -v '^$'); do
+          # 2. 【核心】将二进制转换为纯文本，方便搜索
+          # 我们利用 strings 命令把里面的文本全抓出来
+          strings geosite.dat > decoded.txt
+          
+          echo "开始全库扫描..."
+          
+          # 3. 读取 search.txt 并搜索
+          while read -r domain; do
+            [[ -z "$domain" || "$domain" =~ ^# ]] && continue
             echo "------------------------------------"
             echo "🔍 正在搜索域名: $domain ..."
-            # 利用 grep 查找域名，并显示它所属的分类标题
-            # 逻辑：查找域名，并显示匹配行之前的第一个以字母开头且带冒号的行（通常是分类名）
-            grep -B 50 "$domain" geosite.dat | grep '^[a-zA-Z0-9-]\+:' | tail -n 1 || echo "❌ 未在官方库中找到该域名"
-          done
+            
+            # 在解码后的文本里找域名，并向上找最近的分类名
+            # 官方格式通常是 分类名 在前，域名在后
+            grep -B 100 "$domain" decoded.txt | grep ":" | tail -n 1 || echo "❌ 未在官方库中找到该域名"
+          done < rules/search.txt
           echo "------------------------------------"
