@@ -16,21 +16,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Convert to MRS via API
+      - name: Download Tool
+        run: |
+          # 直接下载官方编译好的二进制，这是最稳的
+          wget -O mihomo.gz https://github.com/MetaCubeX/mihomo/releases/download/v1.18.1/mihomo-linux-amd64-v1.18.1.gz
+          gunzip mihomo.gz
+          chmod +x mihomo
+
+      - name: Convert to MRS
         run: |
           # 1. 构造标准的 YAML 格式
           echo "payload:" > temp.yaml
           grep -v '^#' rules/ken_fix.list | grep -v '^$' | sed 's/^/  - /' >> temp.yaml
           
-          # 2. 调用官方转换 API（这是目前最稳的方法，不依赖本地环境）
-          curl -F "file=@temp.yaml" -F "output=mrs" https://converter.metacubex.one/convert -o rules/ken_fix.mrs
+          # 2. 【核心修正】：使用 convert-ruleset classical 模式
+          # 加一个不存在的 -d 路径，彻底断绝它启动代理的念头
+          ./mihomo convert-ruleset classical temp.yaml rules/ken_fix.mrs
           
-          echo "Conversion finished via API."
+          echo "Conversion Success!"
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add rules/ken_fix.mrs
-          git commit -m "chore: auto update mrs via api" || exit 0
-          git push
+          if [ -f rules/ken_fix.mrs ]; then
+            git add rules/ken_fix.mrs
+            git commit -m "chore: auto update mrs" || exit 0
+            git push
+          else
+            echo "Error: MRS file not found!"
+            exit 1
+          fi
